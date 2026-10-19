@@ -6,7 +6,7 @@ on:
     - cron: '0 7 * * 1-5'
     # Sundays at 18:00 UTC
     - cron: '0 18 * * 0'
-  workflow_dispatch: # Allows to be executed manually from the GitHub Actions tab
+  workflow_dispatch: # Allows manual execution from the GitHub Actions tab
 
 jobs:
   run-bot:
@@ -18,7 +18,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install uv
         run: pip install uv

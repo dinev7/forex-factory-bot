@@ -15,17 +15,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv and Python 3.13
+        uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.13'
-
-      - name: Install uv
-        run: pip install uv
 
       - name: Run script with uv
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          uv run bot.py
+        run: uv run --python 3.13 bot.py

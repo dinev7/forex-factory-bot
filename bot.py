@@ -1,13 +1,27 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["requests", "python-dotenv", "tzdata"]
+# ///
+import html
 import os
-from datetime import datetime, timezone, timedelta
+import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 import requests
 from dotenv import load_dotenv
 
-# Load environment variables from a .env file
+# Load environment variables from a .env file (ignored if it doesn't exist)
 load_dotenv()
 
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+# Public URL of the weekly Forex Factory calendar in JSON format
+FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+
+# Handles winter/summer time (CET/CEST) automatically
+LOCAL_TZ = ZoneInfo("Europe/Madrid")
 
 
 def send_telegram_message(message):
@@ -15,68 +29,74 @@ def send_telegram_message(message):
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
-        "parse_mode": "Markdown",
+        "parse_mode": "HTML",
     }
-    requests.post(url, json=payload)
+    response = requests.post(url, json=payload, timeout=15)
+    if not response.ok:
+        raise RuntimeError(f"Telegram error {response.status_code}: {response.text}")
+
+
+def get_high_impact_events():
+    """Return this week's High-impact events as (local_datetime, event), sorted by time."""
+    response = requests.get(FF_URL, timeout=15)
+    response.raise_for_status()
+    data = response.json()
+    if not isinstance(data, list):
+        raise ValueError(f"Unexpected response from Forex Factory: {str(data)[:200]}")
+
+    events = []
+    for e in data:
+        if e.get("impact") != "High":  # 'High' -> Red Folder
+            continue
+        try:
+            # The feed includes a UTC offset, so we can convert to our timezone
+            local_dt = datetime.fromisoformat(e["date"]).astimezone(LOCAL_TZ)
+        except (KeyError, ValueError):
+            continue
+        events.append((local_dt, e))
+
+    return sorted(events, key=lambda item: item[0])
+
+
+def format_event(local_dt, event, with_day=False):
+    fmt = "%a %d %b %H:%M" if with_day else "%H:%M"
+    title = html.escape(event.get("title", ""))
+    country = html.escape(event.get("country", ""))
+    return f"🔴 <b>{local_dt.strftime(fmt)}</b> - {title} ({country})"
 
 
 def main():
-    # Public URL of the weekly Forex Factory calendar in JSON format
-    ff_url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        sys.exit("Missing TELEGRAM_TOKEN or TELEGRAM_CHAT_ID environment variables.")
 
     try:
-        response = requests.get(ff_url)
-        events = response.json()
+        events = get_high_impact_events()
     except (requests.RequestException, ValueError) as e:
         print(f"Error connecting to Forex Factory: {e}")
-        return
+        sys.exit(1)
 
-    # Define the target timezone (e.g., UTC + 2)
-    custom_tz = timezone(timedelta(hours=2))
-    now = datetime.now(custom_tz)
-    today = now.date()
-    day_of_week = now.weekday()  # 0=Monday, 6=Sunday
+    now = datetime.now(LOCAL_TZ)
 
-    # Filter only high-impact news ('High' -> Red Folder)
-    red_folder_news = [e for e in events if e.get("impact") == "High"]
-
-    message = ""
-
-    # If it's Sunday (6), prepare the report for the upcoming week
-    if day_of_week == 6:
-        message = "📅 *Weekly Forex Report (Red Folder News)*:\n\n"
-        for event in red_folder_news:
-            message += f"🔴 *{event.get('date')}* - {event.get('title')} ({event.get('country')})\n"
-    else:
-        # Daily report (today's news)
-        today_str = today.strftime("%Y-%m-%d")
-        todays_news = [e for e in red_folder_news if today_str in e.get("date", "")]
-
-        if not todays_news:
-            print("No high-impact news for today (or they have already passed).")
-            # Send a test message to confirm the bot is active even if there are no news today
-            send_telegram_message("🔥 Test on Telegram MSG: Bot is alive!")
+    if now.weekday() == 6:  # Sunday -> report for the whole week
+        if not events:
+            print("No high-impact news found for this week.")
             return
+        lines = ["📅 <b>Weekly Forex Report (Red Folder News)</b>:\n"]
+        lines += [format_event(dt, e, with_day=True) for dt, e in events]
+    else:  # Daily report (today's news)
+        todays = [(dt, e) for dt, e in events if dt.date() == now.date()]
+        if not todays:
+            print("No high-impact news for today (or they have already passed).")
+            return
+        lines = ["🚨 <b>High-Impact News (Today)</b>:\n"]
+        lines += [format_event(dt, e) for dt, e in todays]
 
-        message = "🚨 *High-Impact News (Today)*:\n\n"
-        for event in todays_news:
-            time_str = (
-                event.get("date", "").split("T")[1][:5]
-                if "T" in event.get("date", "")
-                else ""
-            )
-            message += (
-                f"🔴 *{time_str}* - {event.get('title')} ({event.get('country')})\n"
-            )
-
-    # Send the filtered message to Telegram
-    send_telegram_message(message)
+    send_telegram_message("\n".join(lines))
     print("Script executed successfully!")
 
 
 if __name__ == "__main__":
     main()
-
 
 # Test if the Bot is working by sending a test message to the Telegram chat
 send_telegram_message("🔥 Test on Telegram MSG")

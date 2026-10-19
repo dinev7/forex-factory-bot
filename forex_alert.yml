@@ -2,11 +2,11 @@ name: Forex Factory Bot
 
 on:
   schedule:
-    # Lunes a viernes a las 07:00 AM UTC
+    # Monday to Friday at 7:00 AM UTC
     - cron: '0 7 * * 1-5'
-    # Los domingos a las 18:00 PM UTC
+    # Sundays at 18:00 UTC
     - cron: '0 18 * * 0'
-  workflow_dispatch: # Permite ejecutarlo manualmente desde la web de GitHub
+  workflow_dispatch: # Allows to be executed manually from the GitHub Actions tab
 
 jobs:
   run-bot:

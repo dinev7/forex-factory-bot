@@ -1,0 +1,17 @@
+# 1. Credenciales y secretos (¡Lo más importante para que no se filtre tu token!)
+.env
+
+# 2. Entorno virtual de Python (pesa mucho y se instala en cada ordenador)
+.venv/
+venv/
+env/
+
+# 3. Archivos temporales y caché de Python
+__pycache__/
+*.pyc
+
+# 4. Archivos invisibles del sistema operativo (específico de Mac)
+.DS_Store
+
+# 5. Carpeta de datos locales (por si el bot genera archivos temporales de prueba)
+data/

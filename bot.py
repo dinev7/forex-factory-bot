@@ -1,10 +1,7 @@
-import os  # library to access environment variables
-from datetime import UTC, datetime
-
-import requests  # library to make HTTP requests
-from dotenv import (
-    load_dotenv,
-)  # reads the .env file and loads the environment variables
+import os
+from datetime import datetime, timezone, timedelta
+import requests
+from dotenv import load_dotenv
 
 # Load environment variables from a .env file
 load_dotenv()
@@ -34,8 +31,11 @@ def main():
         print(f"Error connecting to Forex Factory: {e}")
         return
 
-    today = datetime.now(UTC + 2).date()
-    day_of_week = datetime.now(UTC + 2).weekday()  # 0=Monday, 6=Sunday
+    # Define the target timezone (e.g., UTC + 2)
+    custom_tz = timezone(timedelta(hours=2))
+    now = datetime.now(custom_tz)
+    today = now.date()
+    day_of_week = now.weekday()  # 0=Monday, 6=Sunday
 
     # Filter only high-impact news ('High' -> Red Folder)
     red_folder_news = [e for e in events if e.get("impact") == "High"]
@@ -54,6 +54,8 @@ def main():
 
         if not todays_news:
             print("No high-impact news for today (or they have already passed).")
+            # Send a test message to confirm the bot is active even if there are no news today
+            send_telegram_message("🔥 Test on Telegram MSG: Bot is alive!")
             return
 
         message = "🚨 *High-Impact News (Today)*:\n\n"

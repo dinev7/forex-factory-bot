@@ -74,3 +74,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# Test if the Bot is working by sending a test message to the Telegram chat
+send_telegram_message("🔥 ¡Test on Telegram MSG")

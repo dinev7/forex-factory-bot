@@ -42,7 +42,7 @@ def get_high_impact_events():
     response.raise_for_status()
     data = response.json()
     if not isinstance(data, list):
-        raise ValueError(f"Unexpected response from Forex Factory: {str(data)[:200]}")
+        raise ValueError(f"Unexpected response from Forex Factory: {str(data)[:200]}")  # noqa: TRY004
 
     events = []
     for e in data:
@@ -86,7 +86,8 @@ def main():
     else:  # Daily report (today's news)
         todays = [(dt, e) for dt, e in events if dt.date() == now.date()]
         if not todays:
-            print("No high-impact news for today (or they have already passed).")
+            print("No high-impact news for today.")
+            send_telegram_message("✅ No high-impact news today.")
             return
         lines = ["🚨 <b>High-Impact News (Today)</b>:\n"]
         lines += [format_event(dt, e) for dt, e in todays]
@@ -97,6 +98,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Test if the Bot is working by sending a test message to the Telegram chat
-send_telegram_message("🔥 Test on Telegram MSG")

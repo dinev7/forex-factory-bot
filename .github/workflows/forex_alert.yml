@@ -2,11 +2,15 @@ name: Forex Factory Bot
 
 on:
   schedule:
-    # Monday to Friday at 7:00 AM UTC
-    - cron: '0 7 * * 1-5'
-    # Sundays at 18:00 UTC
-    - cron: '0 18 * * 0'
-  workflow_dispatch: # Allows manual execution from the GitHub Actions tab
+    # Mon-Fri 07:47 Madrid time. The cron runs in the Europe/Madrid timezone,
+    # so summer/winter time changes are handled by GitHub.
+    # The minute is deliberately not :00 (GitHub is busiest at the start of each hour).
+    - cron: '47 7 * * 1-5'
+      timezone: 'Europe/Madrid'
+    # Sundays 19:17 Madrid time (weekly report)
+    - cron: '17 19 * * 0'
+      timezone: 'Europe/Madrid'
+  workflow_dispatch: # Allows manual execution (and external triggers) via the GitHub API
 
 jobs:
   run-bot:
@@ -14,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Show what triggered this run
+        run: echo "Event ${{ github.event_name }} (schedule '${{ github.event.schedule }}') started at $(date -u) UTC"
 
       - name: Install uv and Python 3.13
         uses: astral-sh/setup-uv@v6

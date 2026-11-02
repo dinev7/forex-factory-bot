@@ -59,10 +59,32 @@ def get_high_impact_events():
 
 
 def format_event(local_dt, event, with_day=False):
+    """One line per event. The currency is shown in the section header, not here."""
     fmt = "%a %d %b %H:%M" if with_day else "%H:%M"
     title = html.escape(event.get("title", ""))
-    country = html.escape(event.get("country", ""))
-    return f"🔴 <b>{local_dt.strftime(fmt)}</b> - {title} ({country})"
+    return f"🔴 <b>{local_dt.strftime(fmt)}</b> - {title}"
+
+
+def group_by_currency(events):
+    """Group (local_datetime, event) pairs by currency.
+
+    Events arrive sorted by time, so currencies appear in the order of their first event.
+    """
+    groups = {}
+    for local_dt, event in events:
+        currency = event.get("country") or "OTHER"
+        groups.setdefault(currency, []).append((local_dt, event))
+    return groups
+
+
+def build_report(title, events, with_day=False):
+    """Build the Telegram message with one section per currency (AUD:, USD:, ...)."""
+    lines = [f"<b>{title}</b>:\n"]
+    for currency, items in group_by_currency(events).items():
+        lines.append(f"<b>{html.escape(currency)}:</b>")
+        lines += [format_event(dt, e, with_day) for dt, e in items]
+        lines.append("")  # blank line between currencies
+    return "\n".join(lines).rstrip()
 
 
 def main():
@@ -81,18 +103,18 @@ def main():
         if not events:
             print("No high-impact news found for this week.")
             return
-        lines = ["📅 <b>Weekly Forex Report (Red Folder News)</b>:\n"]
-        lines += [format_event(dt, e, with_day=True) for dt, e in events]
+        message = build_report(
+            "📅 Weekly Forex Report (Red Folder News)", events, with_day=True
+        )
     else:  # Daily report (today's news)
         todays = [(dt, e) for dt, e in events if dt.date() == now.date()]
         if not todays:
             print("No high-impact news for today.")
             send_telegram_message("✅ No high-impact news today.")
             return
-        lines = ["🚨 <b>High-Impact News (Today)</b>:\n"]
-        lines += [format_event(dt, e) for dt, e in todays]
+        message = build_report("🚨 High-Impact News (Today)", todays)
 
-    send_telegram_message("\n".join(lines))
+    send_telegram_message(message)
     print("Script executed successfully!")
 
 

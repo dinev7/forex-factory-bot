@@ -29,8 +29,8 @@ TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 # Public URL of the weekly Forex Factory calendar specifically in JSON format because of its' structured data formating
 FF_URL = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
 
-# Handles winter/summer time (CET/CEST) automatically. We save it to LOCAL_TZ variable
-LOCAL_TZ = ZoneInfo("Europe/Madrid")
+# Handles winter/summer time (CET/CEST) automatically. We save it to NY_TZ (New York TimeZone) variable
+NY_TZ = ZoneInfo("America/New_York")
 
 
 # This function allows the bot to send messages to the user (me) when he gets the call to do so
@@ -65,25 +65,25 @@ def get_high_impact_events():
             continue
         # We use try and except because many times the news will have corrupted date fields so try and except will allow to not crash the script
         try:
-            # We convert the time to our local time zone
-            local_dt = datetime.fromisoformat(e["date"]).astimezone(LOCAL_TZ)
+            # We convert the time to New York time
+            ny_dt = datetime.fromisoformat(e["date"]).astimezone(NY_TZ)
         except (KeyError, ValueError):
             continue
         # This will create a tuple, which means that the date and time of the high impact news cannot be modified otherwise it will throw an error.
-        events.append((local_dt, e))
+        events.append((ny_dt, e))
     # Many times the news are not sorted out by time, so this will ensure the right order for us.
     return sorted(events, key=lambda item: item[0])
 
 
 # This function allows us to view the message in a formated one line text. The with_day is not needed for workdays, it will be only shown in the weekends.
-def format_event(local_dt, event, with_day=False):
+def format_event(ny_dt, event, with_day=False):
     # One line per event. The currency is shown in the section header, not on every line
     # a = weekday, d = day of month, b = abrev month name, H = hour, M = min
     fmt = "%a %d %b %H:%M" if with_day else "%H:%M"
     # The escape takes characters that look like HTML code and turns them into safe, harmless plain text so Telegram doesn't get confused
     title = html.escape(event.get("title", ""))
     # strftime -> String Format Time, raw date formats get turned into formatted text string.
-    return f"🔴 <b>{local_dt.strftime(fmt)}</b> - {title}"
+    return f"🔴 <b>{ny_dt.strftime(fmt)}</b> - {title}"
 
 
 # This groups all the same currency news into one section in the same message
@@ -93,7 +93,7 @@ def group_by_currency(events):
     # Events arrive sorted by time, so currencies appear in the order of their first event.
     # We create a dictionary for the currecies.
     groups = {}
-    for local_dt, event in events:
+    for ny_dt, event in events:
         """ Here even though it is written as country, it refers to the currency, it is just the way forex factory calls it.
         Other is used in case that there's some unknown currency, the script will not crash out.
         """
@@ -102,7 +102,7 @@ def group_by_currency(events):
         """ The (currency, []), allows to check first whether there's already a list created for the currency, otherwise, it will create one with []
         the append drops the event tuple into the list
         """
-        groups.setdefault(currency, []).append((local_dt, event))
+        groups.setdefault(currency, []).append((ny_dt, event))
     return groups
 
 
@@ -110,7 +110,7 @@ def group_by_currency(events):
 def build_report(title, events, with_day=False):
     # Build the Telegram message with one section per currency (AUD:, USD:, ...)
     # The <b> make the text bold
-    lines = [f"<b>{title}</b>:\n"]
+    lines = [f"<b>{title}</b> (times in ET):\n"]
     # items extracts both parts of the diccionary, key and value
     for currency, items in group_by_currency(events).items():
         # escape ensures the currency name is safe, append adds it
@@ -133,7 +133,7 @@ def main():
         print(f"Error connecting to Forex Factory: {e}")
         sys.exit(1)
     # Next, gets the current time, date etc
-    now = datetime.now(LOCAL_TZ)
+    now = datetime.now(NY_TZ)
     # If it happened to be Sunday, it will do a whole weekly report, if not, it means it's just not Sunday
     if now.weekday() == 6:  # Sunday -> report for the whole week
         if not events:

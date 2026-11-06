@@ -2,14 +2,14 @@ name: Forex Factory Bot
 
 on:
   schedule:
-    # Mon-Fri 07:47 Madrid time. The cron runs in the Europe/Madrid timezone,
-    # so summer/winter time changes are handled by GitHub.
+    # Mon-Fri 02:07 New York time. The cron runs in the America/New_York timezone,
+    # so EST/EDT changes are handled by GitHub.
     # The minute is deliberately not :00 (GitHub is busiest at the start of each hour).
-    - cron: '47 7 * * 1-5'
-      timezone: 'Europe/Madrid'
-    # Sundays 19:17 Madrid time (weekly report)
-    - cron: '17 19 * * 0'
-      timezone: 'Europe/Madrid'
+    - cron: '7 2 * * 1-5'
+      timezone: 'America/New_York'
+    # Sundays 02:07 New York time (weekly report)
+    - cron: '7 2 * * 0'
+      timezone: 'America/New_York'
   workflow_dispatch: # Allows manual execution (and external triggers) via the GitHub API
 
 jobs:

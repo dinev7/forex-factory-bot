@@ -31,4 +31,4 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: uv run --python 3.13 bot.py
+        run: uv run --python 3.13 --with requests --with python-dotenv bot.py
